@@ -81,6 +81,7 @@ POINTEUR lire_monome() {
             m->exposant = lire_xpuissance();
             m->suivant = NULL;
         }
+        else if (c=='X') erreur();
         else {
             m->coefficient = coefficient;
             m->exposant = 0;
@@ -120,8 +121,121 @@ POINTEUR lire_polynome() {
     return tete;
 }
 
+// TRI PAR INSERTION VERY VERY HARR!!!!
+POINTEUR trier (POINTEUR sorted, POINTEUR nouveau_maillon) {
+    if (sorted==NULL || sorted->exposant < nouveau_maillon->exposant) {
+        nouveau_maillon->suivant = sorted;
+        return nouveau_maillon;
+    }
+
+    if (sorted != NULL && sorted->exposant == nouveau_maillon->exposant) {
+        sorted->coefficient += nouveau_maillon->coefficient;
+        return sorted;
+    }
+
+    POINTEUR actuel = sorted;
+
+    while (actuel->suivant != NULL && actuel->suivant->exposant > nouveau_maillon->exposant) {
+        actuel = actuel->suivant;
+    }
+
+    if (actuel->suivant != NULL && actuel->suivant->exposant == nouveau_maillon->exposant) {
+        actuel->suivant->coefficient += nouveau_maillon->coefficient;
+        return sorted;
+    }
+
+    nouveau_maillon->suivant = actuel->suivant;
+    actuel->suivant = nouveau_maillon;
+
+    return sorted;
+}
+
+POINTEUR trier_polynome (POINTEUR p) {
+    POINTEUR sorted = NULL;
+    POINTEUR temp = p;
+
+    while (temp!=NULL) {
+        POINTEUR prochain_maillon = temp->suivant;
+        temp->suivant = NULL;
+        sorted = trier(sorted, temp);
+        temp = prochain_maillon;
+    }
+
+    return sorted;
+}
+
+void afficher(POINTEUR p) {
+    POINTEUR temp = p;
+    int premier = 1;
+    while (temp!=NULL) {
+        if (temp->coefficient < 0) {
+            if (temp->coefficient == -1) {
+                if (temp->exposant == 0) {
+                    printf(" - %g", -temp->coefficient);
+                }
+                else if (temp->exposant == 1) {
+                    printf(" - X");
+                }
+                else {
+                    printf(" - X^%d", temp->exposant);
+                }
+            }
+            else {
+                if (temp->exposant == 0) {
+                    printf(" - %g", -temp->coefficient);
+                }
+                else if (temp->exposant == 1) {
+                    printf(" - %gX", -temp->coefficient);
+                }
+                else {
+                    printf(" - %gX^%d", -temp->coefficient, temp->exposant);
+                }
+            }
+        }
+        else {
+            if (temp->coefficient == 1) {
+                if (temp->exposant == 0) {
+                    if (premier) printf("%g", temp->coefficient);
+                    else printf(" + %g", temp->coefficient);
+                }
+                else if (temp->exposant == 1) {
+                    if (premier) printf("X");
+                    else printf(" + X");
+                }
+                else {
+                    if (premier) printf("X^%d", temp->exposant);
+                    else printf(" + X^%d", temp->exposant);
+                }
+            }
+            else {
+                if (temp->exposant == 0) {
+                    if (premier) printf("%g", temp->coefficient);
+                    else printf(" + %g", temp->coefficient);
+                }
+                else if (temp->exposant == 1) {
+                    if (premier) printf("%gX", temp->coefficient);
+                    else printf(" + %gX", temp->coefficient);
+                }
+                else {
+                    if (premier) printf("%gX^%d", temp->coefficient, temp->exposant);
+                    else printf(" + %gX^%d", temp->coefficient, temp->exposant);
+                }
+            }
+        }
+        if (premier) premier = 0;
+        temp = temp->suivant;
+    }
+    printf("\n");
+}
+
+
 int main() {
     lire();
-    lire_polynome();
+    ignorer_espaces();
+    POINTEUR p = lire_polynome();
     printf("Syntaxiquement correct!\n");
+    afficher(p);
+    p = trier_polynome(p);
+    printf("\nPolynome triée:\n");
+    afficher(p);
 }
