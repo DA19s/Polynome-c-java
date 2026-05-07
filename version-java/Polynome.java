@@ -31,13 +31,13 @@ public class Polynome {
             position++;
     }
 
-    // ==============
+  
     // PARSE NATUREL
-    // ex: 5, 23, 100
-    // ==============
+    // ex: 5, 23..
+    
     private int parseNaturel() {
         ignorerEspaces();
-        String chiffres = "";
+        String chiffres = ""; //
         
         // Tant que c'est un chiffre on lit
         while (Character.isDigit(caractereActuel())) {
@@ -51,10 +51,9 @@ public class Polynome {
         return Integer.parseInt(chiffres);
     }
 
-    // ==============
     // PARSE NOMBRE
     // ex: 3, 4.5, 123.0
-    // ==============
+    
     private double parseNombre() {
         ignorerEspaces();
         String nb = "";
@@ -66,7 +65,7 @@ public class Polynome {
         }
 
         // Partie décimale (optionnelle)
-        if (caractereActuel() == '.') {
+        if (caractereActuel() == '.') { 
             nb += '.';
             avancer();
             while (Character.isDigit(caractereActuel())) {
@@ -81,10 +80,9 @@ public class Polynome {
         return Double.parseDouble(nb);
     }
 
-    // ====================
     // PARSE XPUISSANCE
     // ex: X, X^3, X^5
-    // ====================
+   
     private int parseXpuissance() {
         ignorerEspaces();
 
@@ -96,17 +94,17 @@ public class Polynome {
         // Si y'a un ^ on lit l'exposant
         if (caractereActuel() == '^') {
             avancer();
-            return parseNaturel();
+            return parseNaturel(); 
         }
 
         // Sinon exposant = 1 (juste X)
         return 1;
     }
 
-    // ==============
+    
     // PARSE MONOME
     // ex: 3*X^2, X, 4.5, X^3
-    // ==============
+    
     private Maillon parseMonome() {
         ignorerEspaces();
         double coeff = 1.0;
@@ -131,10 +129,10 @@ public class Polynome {
         return new Maillon(coeff, exp);
     }
 
-    // ====================
+   
     // PARSE POLYNOME
     // ex: -3*X^2 + 2*X - 5
-    // ====================
+   
     public void parser(String textePolynome) {
         this.texte = textePolynome;
         this.position = 0;
@@ -142,11 +140,11 @@ public class Polynome {
 
         ignorerEspaces();
 
-        // Signe global au début (optionnel)
-        double signeGlobal = 1.0;
+        // Signe global au début du polynôme
+        double signeGlobal = 1.0; 
         if (caractereActuel() == '-') {
             signeGlobal = -1.0;
-            avancer();
+            avancer(); // on continue après le signe pour lire le premier monôme
         }
 
         // Premier monôme
@@ -159,11 +157,11 @@ public class Polynome {
             ignorerEspaces();
             char op = caractereActuel();
 
-            if (op != '+' && op != '-') break; // fin du polynôme
+            if (op != '+' && op != '-') break; // fin du polynôme 
             avancer();
 
             double signe = (op == '-') ? -1.0 : 1.0;
-            Maillon suivant = parseMonome();
+            Maillon suivant = parseMonome();// on lit le monôme suivant et and we do the same thing as the first one
             suivant.coefficient *= signe;
             ajouterMonome(suivant.coefficient, suivant.exposant);
         }
@@ -171,8 +169,49 @@ public class Polynome {
 
     // Ajouter un monôme au début (de l'étape 1)
     public void ajouterMonome(double coeff, int exp) {
-        Maillon nouveau = new Maillon(coeff, exp);
-        nouveau.suivant = tete;
-        tete = nouveau;
+        Maillon nouveau = new Maillon(coeff, exp);// we insert the new monome at the beginning of the list
+        nouveau.suivant = tete; // new monome points to the old head
+        tete = nouveau; // head now points to the new monome
     }
+
+    public void afficher() {
+    if (tete == null) {
+        System.out.println("0");
+        return;
+    }
+
+    Maillon courant = tete;
+    boolean estPremierMonome = true;
+
+    while (courant != null) {
+        double coeff = courant.coefficient;
+        int exp = courant.exposant;
+
+        // ---- GESTION DU SIGNE ----
+        if (estPremierMonome) {
+            if (coeff < 0) System.out.print("- ");
+            estPremierMonome = false;
+        } else {
+            if (coeff < 0) System.out.print(" - ");
+            else System.out.print(" + ");
+        }
+
+        double valeur = Math.abs(coeff);
+
+        // ---- GESTION DU COEFFICIENT ----
+        if (exp == 0) {
+            System.out.print(valeur);
+        } else if (valeur == 1.0) {
+            if (exp == 1) System.out.print("X");
+            else System.out.print("X^" + exp);
+        } else {
+            if (exp == 1) System.out.print(valeur + "*X");
+            else System.out.print(valeur + "*X^" + exp);
+        }
+
+        courant = courant.suivant;
+    }
+
+    System.out.println();
+}
 }
