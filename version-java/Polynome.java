@@ -37,7 +37,7 @@ public class Polynome {
     
     private int parseNaturel() {
         ignorerEspaces();
-        String chiffres = ""; //
+        String chiffres = ""; // 
         
         // Tant que c'est un chiffre on lit
         while (Character.isDigit(caractereActuel())) {
@@ -196,7 +196,7 @@ public class Polynome {
             else System.out.print(" + ");
         }
 
-        double valeur = Math.abs(coeff);
+        double valeur = Math.abs(coeff); 
 
         // ---- GESTION DU COEFFICIENT ----
         if (exp == 0) {
@@ -213,5 +213,69 @@ public class Polynome {
     }
 
     System.out.println();
+    
+}
+// Fonction 1 : insère un maillon au bon endroit dans la liste triée
+private Maillon insererTrie(Maillon sorted, Maillon nouveau) {
+
+    // Cas 1 : la liste est vide OU le nouveau a le plus grand exposant
+    // → il devient le premier
+    if (sorted == null || sorted.exposant < nouveau.exposant) {
+        nouveau.suivant = sorted;
+        return nouveau; 
+    }
+
+    // Cas 2 : même exposant → on additionne les coefficients
+    // ex: 3*X^2 et 2*X^2 → 5*X^2
+    if (sorted.exposant == nouveau.exposant) {
+        sorted.coefficient += nouveau.coefficient;
+        return sorted;
+    }
+
+    // Cas 3 : on cherche la bonne position dans la liste
+    Maillon actuel = sorted;
+
+    while (actuel.suivant != null && actuel.suivant.exposant > nouveau.exposant) {
+        actuel = actuel.suivant; // on avance tant que l'exposant suivant est plus grand
+    }
+
+    // On vérifie encore si même exposant au point d'insertion
+    if (actuel.suivant != null && actuel.suivant.exposant == nouveau.exposant) {
+        actuel.suivant.coefficient += nouveau.coefficient;
+        return sorted;
+    }
+
+    // On insère le nouveau maillon à la bonne place
+    nouveau.suivant = actuel.suivant; 
+    actuel.suivant = nouveau;
+
+    return sorted;
+}
+
+// Fonction 2 : trie tout le polynôme
+public void trierParDegreDecroissant() {
+    Maillon sorted = null;  // liste triée vide au départ
+    Maillon temp = tete;    // on le met au debut pour le parcout de la liste
+
+    while (temp != null) {
+        Maillon prochainMaillon = temp.suivant; // on sauvegarde le suivant
+        temp.suivant = null;                    // on détache le maillon courant
+        sorted = insererTrie(sorted, temp);     // on l'insère au bon endroit
+        temp = prochainMaillon;                 // on passe au suivant
+    }
+
+    tete = sorted; // la liste triée devient notre polynôme
+}
+public double evaluer(double x) {
+    Maillon courant = tete;
+    double resultat = 0.0;
+
+    while (courant != null) {
+        // coefficient * x^exposant
+        resultat += courant.coefficient * Math.pow(x, courant.exposant);
+        courant = courant.suivant;
+    }
+
+    return resultat;
 }
 }
