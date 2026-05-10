@@ -271,11 +271,179 @@ public double evaluer(double x) {
     double resultat = 0.0;
 
     while (courant != null) {
-        // coefficient * x^exposant
         resultat += courant.coefficient * Math.pow(x, courant.exposant);
         courant = courant.suivant;
     }
 
+    return resultat;
+}
+
+// ---- Étape 6 : Opérations arithmétiques ----
+
+// Technique du nœud sentinelle : on crée un faux premier nœud pour éviter
+// de traiter le cas "liste vide" séparément. À la fin, tete = sentinelle.suivant.
+
+// Méthode partagée par plus() et moins().
+// signe = +1 pour l'addition, -1 pour la soustraction des coefficients de 'autre'.
+private Polynome fusionner(Polynome autre, double signe) {
+    Polynome resultat = new Polynome();
+    Maillon sentinelle = new Maillon(0, 0); // nœud factice
+    Maillon queue = sentinelle;             // pointe toujours le dernier nœud réel
+    Maillon a = this.tete;
+    Maillon b = autre.tete;
+
+    // Les deux listes sont déjà triées par exposant décroissant.
+    // On avance dans les deux en même temps, comme dans le tri-fusion.
+    while (a != null && b != null) {
+        Maillon nouveau = null;
+
+        if (a.exposant > b.exposant) {
+            nouveau = new Maillon(a.coefficient, a.exposant);
+            a = a.suivant;
+        } else if (b.exposant > a.exposant) {
+            nouveau = new Maillon(signe * b.coefficient, b.exposant);
+            b = b.suivant;
+        } else {
+            // Même exposant → on combine les coefficients
+            double valeur = a.coefficient + signe * b.coefficient;
+            int exp = a.exposant;
+            a = a.suivant;
+            b = b.suivant;
+            if (valeur != 0) nouveau = new Maillon(valeur, exp); // terme nul → on l'ignore
+        }
+
+        if (nouveau != null) {
+            queue.suivant = nouveau;
+            queue = nouveau;
+        }
+    }
+
+    // Il reste des termes dans a ou dans b (pas les deux) : on les recopie
+    while (a != null) {
+        queue.suivant = new Maillon(a.coefficient, a.exposant);
+        queue = queue.suivant;
+        a = a.suivant;
+    }
+    while (b != null) {
+        queue.suivant = new Maillon(signe * b.coefficient, b.exposant);
+        queue = queue.suivant;
+        b = b.suivant;
+    }
+
+    resultat.tete = sentinelle.suivant; // on saute le nœud factice
+    return resultat;
+}
+
+public Polynome plus(Polynome autre) {
+    return fusionner(autre, +1);
+}
+
+public Polynome moins(Polynome autre) {
+    return fusionner(autre, -1);
+}
+
+// Supprime les maillons de coefficient 0 (produits par fois() quand des termes s'annulent)
+private void supprimerZeros() {
+    while (tete != null && tete.coefficient == 0) tete = tete.suivant;
+    if (tete == null) return;
+    Maillon courant = tete;
+    while (courant.suivant != null) {
+        if (courant.suivant.coefficient == 0)
+            courant.suivant = courant.suivant.suivant;
+        else
+            courant = courant.suivant;
+    }
+}
+
+// Double boucle : chaque monôme de 'this' est multiplié par chaque monôme de 'autre'.
+// insererTrie() place chaque produit au bon endroit et fusionne les exposants égaux.
+public Polynome fois(Polynome autre) {
+    Polynome resultat = new Polynome();
+
+    for (Maillon a = this.tete; a != null; a = a.suivant) {
+        for (Maillon b = autre.tete; b != null; b = b.suivant) {
+            double coeff = a.coefficient * b.coefficient;
+            int exp = a.exposant + b.exposant;
+            resultat.tete = resultat.insererTrie(resultat.tete, new Maillon(coeff, exp));
+        }
+    }
+
+    resultat.supprimerZeros();
+    return resultat;
+}
+
+// Division euclidienne : this = b * quotient + reste, avec deg(reste) < deg(b).
+// Le reste est retourné via le tableau 'reste' (reste[0]), car Java ne renvoie qu'une valeur.
+public Polynome quotient(Polynome b, Polynome[] reste) {
+    if (b.tete == null) throw new RuntimeException("Division par le polynôme nul");
+
+    Polynome q = new Polynome(); // quotient, vide au départ
+    Polynome r = this;           // reste courant, commence égal à this
+
+    // Tant que le degré du reste >= degré du diviseur
+    while (r.tete != null && r.tete.exposant >= b.tete.exposant) {
+        // Terme courant du quotient : (coeff dominant de r) / (coeff dominant de b)
+        double coeff = r.tete.coefficient / b.tete.coefficient;
+        int exp     = r.tete.exposant   - b.tete.exposant;
+
+        Polynome t = new Polynome();
+        t.ajouterMonome(coeff, exp); // t = coeff * X^exp
+
+        q = q.plus(t);          // on accumule dans le quotient
+        r = r.moins(t.fois(b)); // on soustrait t*b du reste
+    }
+
+    reste[0] = r;
+    return q;
+}
+
+// ---- Étape 8 : Versions récursives de plus et moins ----
+
+// Auxiliaire récursive partagée. Travaille directement sur les maillons.
+// signe = +1 (addition) ou -1 (soustraction des coefficients de b).
+private Maillon fusionnerRecursif(Maillon a, Maillon b, double signe) {
+    // Cas de base : une des deux listes est épuisée
+    if (a == null && b == null) return null;
+    if (a == null) {
+        Maillon copie = new Maillon(signe * b.coefficient, b.exposant);
+        copie.suivant = fusionnerRecursif(null, b.suivant, signe);
+        return copie;
+    }
+    if (b == null) {
+        Maillon copie = new Maillon(a.coefficient, a.exposant);
+        copie.suivant = fusionnerRecursif(a.suivant, null, signe);
+        return copie;
+    }
+
+    // Cas récursif : on traite le terme de plus grand exposant, puis on délègue le reste
+    if (a.exposant > b.exposant) {
+        Maillon courant = new Maillon(a.coefficient, a.exposant);
+        courant.suivant = fusionnerRecursif(a.suivant, b, signe);
+        return courant;
+    } else if (b.exposant > a.exposant) {
+        Maillon courant = new Maillon(signe * b.coefficient, b.exposant);
+        courant.suivant = fusionnerRecursif(a, b.suivant, signe);
+        return courant;
+    } else {
+        // Même exposant : on combine, puis on continue sur les deux restes
+        double valeur = a.coefficient + signe * b.coefficient;
+        Maillon suite = fusionnerRecursif(a.suivant, b.suivant, signe);
+        if (valeur == 0) return suite; // terme nul → on le saute, on remonte directement la suite
+        Maillon courant = new Maillon(valeur, a.exposant);
+        courant.suivant = suite;
+        return courant;
+    }
+}
+
+public Polynome plusRecursif(Polynome autre) {
+    Polynome resultat = new Polynome();
+    resultat.tete = fusionnerRecursif(this.tete, autre.tete, +1);
+    return resultat;
+}
+
+public Polynome moinsRecursif(Polynome autre) {
+    Polynome resultat = new Polynome();
+    resultat.tete = fusionnerRecursif(this.tete, autre.tete, -1);
     return resultat;
 }
 }
