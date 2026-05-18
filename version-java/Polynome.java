@@ -446,4 +446,60 @@ public Polynome moinsRecursif(Polynome autre) {
     resultat.tete = fusionnerRecursif(this.tete, autre.tete, -1);
     return resultat;
 }
+
+// ---- Étape 7 : Garbage collector manuel ----
+
+// Tableau des polynômes déclarés "utiles" (encore en vie dans le programme)
+static Polynome[] polyUtile = new Polynome[100];
+static int nbPolyUtile = 0;
+
+// Déclare un polynôme comme utile : ses maillons ne seront pas collectés
+public static void enregistrer(Polynome p) {
+    polyUtile[nbPolyUtile++] = p;
+}
+
+// Compte le nombre de maillons dans la liste globale (pour les stats)
+public static int compterMaillons() {
+    int n = 0;
+    for (Maillon m = Maillon.tousLesMaillons; m != null; m = m.general) n++;
+    return n;
+}
+
+// Phase 1 — Marquer : parcourt tous les polynômes utiles et marque leurs maillons
+private static void marquer() {
+    for (int i = 0; i < nbPolyUtile; i++) {
+        if (polyUtile[i] == null) continue;
+        for (Maillon m = polyUtile[i].tete; m != null; m = m.suivant)
+            m.utile = true;
+    }
+}
+
+// Phase 2 — Balayer : supprime les maillons non marqués de la liste globale
+private static int balayer() {
+    int liberes = 0;
+    Maillon conserves = null;
+    Maillon m = Maillon.tousLesMaillons;
+    while (m != null) {
+        Maillon suivantGeneral = m.general; // sauvegarde avant de modifier m.general
+        if (m.utile) {
+            m.utile = false;       // efface la marque pour le prochain cycle
+            m.general = conserves;
+            conserves = m;
+        } else {
+            liberes++;             // maillon inutile : retiré de la liste globale
+        }
+        m = suivantGeneral;
+    }
+    Maillon.tousLesMaillons = conserves;
+    return liberes;
+}
+
+// Point d'entrée du GC : marquer puis balayer
+public static void recycler() {
+    System.out.println("[GC] Avant : " + compterMaillons() + " maillons en mémoire");
+    marquer();
+    int liberes = balayer();
+    System.out.println("[GC] " + liberes + " maillon(s) libéré(s)");
+    System.out.println("[GC] Après : " + compterMaillons() + " maillons en mémoire");
+}
 }
