@@ -1,0 +1,505 @@
+public class Polynome {
+    Maillon tete;
+    
+    // Le texte du polynôme et la position actuelle
+    private String texte;
+    private int position;
+
+    public Polynome() {
+        this.tete = null;
+    }
+
+
+    // MÉTHODES UTILITAIRES
+    
+
+    // Donne le caractère actuel sans avancer
+    private char caractereActuel() {
+        if (position < texte.length())
+            return texte.charAt(position);
+        return '\0'; // caractère vide = fin du texte
+    }
+
+    // Avance d'un caractère
+    private void avancer() {
+        position++;
+    }
+
+    // Ignore les espaces
+    private void ignorerEspaces() {
+        while (position < texte.length() && texte.charAt(position) == ' ')
+            position++;
+    }
+
+  
+    // PARSE NATUREL
+    // ex: 5, 23..
+    
+    private int parseNaturel() {
+        ignorerEspaces();
+        String chiffres = ""; // 
+        
+        // Tant que c'est un chiffre on lit
+        while (Character.isDigit(caractereActuel())) {
+            chiffres += caractereActuel();
+            avancer();
+        }
+
+        if (chiffres.isEmpty())
+            throw new RuntimeException("Erreur : chiffre attendu à position " + position);
+
+        return Integer.parseInt(chiffres);
+    }
+
+    // PARSE NOMBRE
+    // ex: 3, 4.5, 123.0
+    
+    private double parseNombre() {
+        ignorerEspaces();
+        String nb = "";
+
+        // Partie entière
+        while (Character.isDigit(caractereActuel())) {
+            nb += caractereActuel();
+            avancer();
+        }
+
+        // Partie décimale (optionnelle)
+        if (caractereActuel() == '.') { 
+            nb += '.';
+            avancer();
+            while (Character.isDigit(caractereActuel())) {
+                nb += caractereActuel();
+                avancer();
+            }
+        }
+
+        if (nb.isEmpty())
+            throw new RuntimeException("Erreur : nombre attendu à position " + position);
+
+        return Double.parseDouble(nb);
+    }
+
+    // PARSE XPUISSANCE
+    // ex: X, X^3, X^5
+   
+    private int parseXpuissance() {
+        ignorerEspaces();
+
+        // On attend forcément un X ici
+        if (caractereActuel() != 'X')
+            throw new RuntimeException("Erreur : X attendu à position " + position);
+        avancer();
+
+        // Si y'a un ^ on lit l'exposant
+        if (caractereActuel() == '^') {
+            avancer();
+            return parseNaturel(); 
+        }
+
+        // Sinon exposant = 1 (juste X)
+        return 1;
+    }
+
+    
+    // PARSE MONOME
+    // ex: 3*X^2, X, 4.5, X^3
+    
+    private Maillon parseMonome() {
+        ignorerEspaces();
+        double coeff = 1.0;
+        int exp = 0;
+
+        // Cas 1 : commence par un chiffre → nombre*X^n ou juste nombre
+        if (Character.isDigit(caractereActuel())) {
+            coeff = parseNombre();
+            ignorerEspaces();
+
+            if (caractereActuel() == '*') {
+                avancer(); // on passe le *
+                exp = parseXpuissance();
+            }
+            // sinon c'est juste un nombre, exposant reste 0
+        }
+        // Cas 2 : commence par X → X ou X^n (coeff = 1)
+        else if (caractereActuel() == 'X') {
+            exp = parseXpuissance();
+        }
+
+        return new Maillon(coeff, exp);
+    }
+
+   
+    // PARSE POLYNOME
+    // ex: -3*X^2 + 2*X - 5
+   
+    public void parser(String textePolynome) {
+        this.texte = textePolynome;
+        this.position = 0;
+        this.tete = null;
+
+        ignorerEspaces();
+
+        // Signe global au début du polynôme
+        double signeGlobal = 1.0; 
+        if (caractereActuel() == '-') {
+            signeGlobal = -1.0;
+            avancer(); // on continue après le signe pour lire le premier monôme
+        }
+
+        // Premier monôme
+        Maillon m = parseMonome();
+        m.coefficient *= signeGlobal;
+        ajouterMonome(m.coefficient, m.exposant);
+
+        // Monômes suivants séparés par + ou -
+        while (true) {
+            ignorerEspaces();
+            char op = caractereActuel();
+
+            if (op != '+' && op != '-') break; // fin du polynôme 
+            avancer();
+
+            double signe = (op == '-') ? -1.0 : 1.0;
+            Maillon suivant = parseMonome();// on lit le monôme suivant et and we do the same thing as the first one
+            suivant.coefficient *= signe;
+            ajouterMonome(suivant.coefficient, suivant.exposant);
+        }
+    }
+
+    // Ajouter un monôme au début (de l'étape 1)
+    public void ajouterMonome(double coeff, int exp) {
+        Maillon nouveau = new Maillon(coeff, exp);// we insert the new monome at the beginning of the list
+        nouveau.suivant = tete; // new monome points to the old head
+        tete = nouveau; // head now points to the new monome
+    }
+
+    public void afficher() {
+    if (tete == null) {
+        System.out.println("0");
+        return;
+    }
+
+    Maillon courant = tete;
+    boolean estPremierMonome = true;
+
+    while (courant != null) {
+        double coeff = courant.coefficient;
+        int exp = courant.exposant;
+
+        // ---- GESTION DU SIGNE ----
+        if (estPremierMonome) {
+            if (coeff < 0) System.out.print("- ");
+            estPremierMonome = false;
+        } else {
+            if (coeff < 0) System.out.print(" - ");
+            else System.out.print(" + ");
+        }
+
+        double valeur = Math.abs(coeff); 
+
+        // ---- GESTION DU COEFFICIENT ----
+        if (exp == 0) {
+            System.out.print(valeur);
+        } else if (valeur == 1.0) {
+            if (exp == 1) System.out.print("X");
+            else System.out.print("X^" + exp);
+        } else {
+            if (exp == 1) System.out.print(valeur + "*X");
+            else System.out.print(valeur + "*X^" + exp);
+        }
+
+        courant = courant.suivant;
+    }
+
+    System.out.println();
+    
+}
+// Fonction 1 : insère un maillon au bon endroit dans la liste triée
+private Maillon insererTrie(Maillon sorted, Maillon nouveau) {
+
+    // Cas 1 : la liste est vide OU le nouveau a le plus grand exposant
+    // → il devient le premier
+    if (sorted == null || sorted.exposant < nouveau.exposant) {
+        nouveau.suivant = sorted;
+        return nouveau; 
+    }
+
+    // Cas 2 : même exposant → on additionne les coefficients
+    // ex: 3*X^2 et 2*X^2 → 5*X^2
+    if (sorted.exposant == nouveau.exposant) {
+        sorted.coefficient += nouveau.coefficient;
+        return sorted;
+    }
+
+    // Cas 3 : on cherche la bonne position dans la liste
+    Maillon actuel = sorted;
+
+    while (actuel.suivant != null && actuel.suivant.exposant > nouveau.exposant) {
+        actuel = actuel.suivant; // on avance tant que l'exposant suivant est plus grand
+    }
+
+    // On vérifie encore si même exposant au point d'insertion
+    if (actuel.suivant != null && actuel.suivant.exposant == nouveau.exposant) {
+        actuel.suivant.coefficient += nouveau.coefficient;
+        return sorted;
+    }
+
+    // On insère le nouveau maillon à la bonne place
+    nouveau.suivant = actuel.suivant; 
+    actuel.suivant = nouveau;
+
+    return sorted;
+}
+
+// Fonction 2 : trie tout le polynôme
+public void trierParDegreDecroissant() {
+    Maillon sorted = null;  // liste triée vide au départ
+    Maillon temp = tete;    // on le met au debut pour le parcout de la liste
+
+    while (temp != null) {
+        Maillon prochainMaillon = temp.suivant; // on sauvegarde le suivant
+        temp.suivant = null;                    // on détache le maillon courant
+        sorted = insererTrie(sorted, temp);     // on l'insère au bon endroit
+        temp = prochainMaillon;                 // on passe au suivant
+    }
+
+    tete = sorted; // la liste triée devient notre polynôme
+}
+public double evaluer(double x) {
+    Maillon courant = tete;
+    double resultat = 0.0;
+
+    while (courant != null) {
+        resultat += courant.coefficient * Math.pow(x, courant.exposant);
+        courant = courant.suivant;
+    }
+
+    return resultat;
+}
+
+// ---- Étape 6 : Opérations arithmétiques ----
+
+// Technique du nœud sentinelle : on crée un faux premier nœud pour éviter
+// de traiter le cas "liste vide" séparément. À la fin, tete = sentinelle.suivant.
+
+// Méthode partagée par plus() et moins().
+// signe = +1 pour l'addition, -1 pour la soustraction des coefficients de 'autre'.
+private Polynome fusionner(Polynome autre, double signe) {
+    Polynome resultat = new Polynome();
+    Maillon sentinelle = new Maillon(0, 0); // nœud factice
+    Maillon queue = sentinelle;             // pointe toujours le dernier nœud réel
+    Maillon a = this.tete;
+    Maillon b = autre.tete;
+
+    // Les deux listes sont déjà triées par exposant décroissant.
+    // On avance dans les deux en même temps, comme dans le tri-fusion.
+    while (a != null && b != null) {
+        Maillon nouveau = null;
+
+        if (a.exposant > b.exposant) {
+            nouveau = new Maillon(a.coefficient, a.exposant);
+            a = a.suivant;
+        } else if (b.exposant > a.exposant) {
+            nouveau = new Maillon(signe * b.coefficient, b.exposant);
+            b = b.suivant;
+        } else {
+            // Même exposant → on combine les coefficients
+            double valeur = a.coefficient + signe * b.coefficient;
+            int exp = a.exposant;
+            a = a.suivant;
+            b = b.suivant;
+            if (valeur != 0) nouveau = new Maillon(valeur, exp); // terme nul → on l'ignore
+        }
+
+        if (nouveau != null) {
+            queue.suivant = nouveau;
+            queue = nouveau;
+        }
+    }
+
+    // Il reste des termes dans a ou dans b (pas les deux) : on les recopie
+    while (a != null) {
+        queue.suivant = new Maillon(a.coefficient, a.exposant);
+        queue = queue.suivant;
+        a = a.suivant;
+    }
+    while (b != null) {
+        queue.suivant = new Maillon(signe * b.coefficient, b.exposant);
+        queue = queue.suivant;
+        b = b.suivant;
+    }
+
+    resultat.tete = sentinelle.suivant; // on saute le nœud factice
+    return resultat;
+}
+
+public Polynome plus(Polynome autre) {
+    return fusionner(autre, +1);
+}
+
+public Polynome moins(Polynome autre) {
+    return fusionner(autre, -1);
+}
+
+// Supprime les maillons de coefficient 0 (produits par fois() quand des termes s'annulent)
+private void supprimerZeros() {
+    while (tete != null && tete.coefficient == 0) tete = tete.suivant;
+    if (tete == null) return;
+    Maillon courant = tete;
+    while (courant.suivant != null) {
+        if (courant.suivant.coefficient == 0)
+            courant.suivant = courant.suivant.suivant;
+        else
+            courant = courant.suivant;
+    }
+}
+
+// Double boucle : chaque monôme de 'this' est multiplié par chaque monôme de 'autre'.
+// insererTrie() place chaque produit au bon endroit et fusionne les exposants égaux.
+public Polynome fois(Polynome autre) {
+    Polynome resultat = new Polynome();
+
+    for (Maillon a = this.tete; a != null; a = a.suivant) {
+        for (Maillon b = autre.tete; b != null; b = b.suivant) {
+            double coeff = a.coefficient * b.coefficient;
+            int exp = a.exposant + b.exposant;
+            resultat.tete = resultat.insererTrie(resultat.tete, new Maillon(coeff, exp));
+        }
+    }
+
+    resultat.supprimerZeros();
+    return resultat;
+}
+
+// Division euclidienne : this = b * quotient + reste, avec deg(reste) < deg(b).
+// Le reste est retourné via le tableau 'reste' (reste[0]), car Java ne renvoie qu'une valeur.
+public Polynome quotient(Polynome b, Polynome[] reste) {
+    if (b.tete == null) throw new RuntimeException("Division par le polynôme nul");
+
+    Polynome q = new Polynome(); // quotient, vide au départ
+    Polynome r = this;           // reste courant, commence égal à this
+
+    // Tant que le degré du reste >= degré du diviseur
+    while (r.tete != null && r.tete.exposant >= b.tete.exposant) {
+        // Terme courant du quotient : (coeff dominant de r) / (coeff dominant de b)
+        double coeff = r.tete.coefficient / b.tete.coefficient;
+        int exp     = r.tete.exposant   - b.tete.exposant;
+
+        Polynome t = new Polynome();
+        t.ajouterMonome(coeff, exp); // t = coeff * X^exp
+
+        q = q.plus(t);          // on accumule dans le quotient
+        r = r.moins(t.fois(b)); // on soustrait t*b du reste
+    }
+
+    reste[0] = r;
+    return q;
+}
+
+// ---- Étape 8 : Versions récursives de plus et moins ----
+
+// Auxiliaire récursive partagée. Travaille directement sur les maillons.
+// signe = +1 (addition) ou -1 (soustraction des coefficients de b).
+private Maillon fusionnerRecursif(Maillon a, Maillon b, double signe) {
+    // Cas de base : une des deux listes est épuisée
+    if (a == null && b == null) return null;
+    if (a == null) {
+        Maillon copie = new Maillon(signe * b.coefficient, b.exposant);
+        copie.suivant = fusionnerRecursif(null, b.suivant, signe);
+        return copie;
+    }
+    if (b == null) {
+        Maillon copie = new Maillon(a.coefficient, a.exposant);
+        copie.suivant = fusionnerRecursif(a.suivant, null, signe);
+        return copie;
+    }
+
+    // Cas récursif : on traite le terme de plus grand exposant, puis on délègue le reste
+    if (a.exposant > b.exposant) {
+        Maillon courant = new Maillon(a.coefficient, a.exposant);
+        courant.suivant = fusionnerRecursif(a.suivant, b, signe);
+        return courant;
+    } else if (b.exposant > a.exposant) {
+        Maillon courant = new Maillon(signe * b.coefficient, b.exposant);
+        courant.suivant = fusionnerRecursif(a, b.suivant, signe);
+        return courant;
+    } else {
+        // Même exposant : on combine, puis on continue sur les deux restes
+        double valeur = a.coefficient + signe * b.coefficient;
+        Maillon suite = fusionnerRecursif(a.suivant, b.suivant, signe);
+        if (valeur == 0) return suite; // terme nul → on le saute, on remonte directement la suite
+        Maillon courant = new Maillon(valeur, a.exposant);
+        courant.suivant = suite;
+        return courant;
+    }
+}
+
+public Polynome plusRecursif(Polynome autre) {
+    Polynome resultat = new Polynome();
+    resultat.tete = fusionnerRecursif(this.tete, autre.tete, +1);
+    return resultat;
+}
+
+public Polynome moinsRecursif(Polynome autre) {
+    Polynome resultat = new Polynome();
+    resultat.tete = fusionnerRecursif(this.tete, autre.tete, -1);
+    return resultat;
+}
+
+// ---- Étape 7 : Garbage collector manuel ----
+
+// Tableau des polynômes déclarés "utiles" (encore en vie dans le programme)
+static Polynome[] polyUtile = new Polynome[100];
+static int nbPolyUtile = 0;
+
+// Déclare un polynôme comme utile : ses maillons ne seront pas collectés
+public static void enregistrer(Polynome p) {
+    polyUtile[nbPolyUtile++] = p;
+}
+
+// Compte le nombre de maillons dans la liste globale (pour les stats)
+public static int compterMaillons() {
+    int n = 0;
+    for (Maillon m = Maillon.tousLesMaillons; m != null; m = m.general) n++;
+    return n;
+}
+
+// Phase 1 — Marquer : parcourt tous les polynômes utiles et marque leurs maillons
+private static void marquer() {
+    for (int i = 0; i < nbPolyUtile; i++) {
+        if (polyUtile[i] == null) continue;
+        for (Maillon m = polyUtile[i].tete; m != null; m = m.suivant)
+            m.utile = true;
+    }
+}
+
+// Phase 2 — Balayer : supprime les maillons non marqués de la liste globale
+private static int balayer() {
+    int liberes = 0;
+    Maillon conserves = null;
+    Maillon m = Maillon.tousLesMaillons;
+    while (m != null) {
+        Maillon suivantGeneral = m.general; // sauvegarde avant de modifier m.general
+        if (m.utile) {
+            m.utile = false;       // efface la marque pour le prochain cycle
+            m.general = conserves;
+            conserves = m;
+        } else {
+            liberes++;             // maillon inutile : retiré de la liste globale
+        }
+        m = suivantGeneral;
+    }
+    Maillon.tousLesMaillons = conserves;
+    return liberes;
+}
+
+// Point d'entrée du GC : marquer puis balayer
+public static void recycler() {
+    System.out.println("[GC] Avant : " + compterMaillons() + " maillons en mémoire");
+    marquer();
+    int liberes = balayer();
+    System.out.println("[GC] " + liberes + " maillon(s) libéré(s)");
+    System.out.println("[GC] Après : " + compterMaillons() + " maillons en mémoire");
+}
+}

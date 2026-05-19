@@ -610,7 +610,7 @@ int main() {
     printf("Nombre total de maillon: %d", nombre_de_maillon());
     printf("\n=========================================================\n");
 
-    printf("La femme de menage passe:");
+    printf("La femme de menage passe: ");
     marquer_utile();
     gerer_inutile();
 
