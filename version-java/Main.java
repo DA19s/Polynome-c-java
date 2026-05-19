@@ -29,7 +29,7 @@ public class Main {
         System.out.println("\np1 + p2 = "); p1.plus(p2).afficher();
         System.out.println("p1 * p2 = "); p1.fois(p2).afficher();
 
-        // Le GC libère tous les maillons temporaires non enregistrés
+        // Le GC libère tous les maillons temporaires non enregistrés 
         System.out.println();
         Polynome.recycler();
 
