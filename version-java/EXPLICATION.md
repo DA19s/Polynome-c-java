@@ -26,9 +26,9 @@ tete → [3.0 | exp:2 | →] → [1.0 | exp:1 | →] → [-5.0 | exp:0 | null]
 
 | Fichier | Rôle |
 |---------|------|
-| `Maillon.java` | La boîte : stocke `coefficient`, `exposant`, et `suivant` |
-| `Polynome.java` | Toute la logique : lire, trier, afficher, calculer |
-| `Main.java` | Point d'entrée : crée des polynômes et teste les opérations |
+| `Maillon.java` | La boîte : stocke `coefficient`, `exposant`, `suivant`, et les champs du GC |
+| `Polynome.java` | Toute la logique : lire, trier, afficher, calculer, GC |
+| `Main.java` | Point d'entrée : lit deux polynômes depuis le clavier et teste les opérations |
 
 ---
 
@@ -148,7 +148,45 @@ Résultat : quotient = X+1,  reste = 0  ✓
 
 ---
 
-### 8. Versions récursives de `plus` et `moins` (`plusRecursif`, `moinsRecursif`)
+### 8. Garbage collector manuel (`recycler`)
+
+Chaque opération (`plus`, `fois`, etc.) crée des maillons temporaires qui ne sont plus utiles après le calcul. Le GC les détecte et les libère.
+
+#### Comment `Maillon` s'enregistre automatiquement
+
+Chaque `new Maillon(...)` s'ajoute tout seul à une liste globale `tousLesMaillons` via le champ `general` :
+
+```
+tousLesMaillons → [maillon_temp | general→] → [p1_X² | general→] → [p1_X | general→] → ...
+                    (résidu de fois)              (polynôme actif)
+```
+
+Le champ `general` est indépendant de `suivant` — il sert uniquement au GC.
+
+#### Phase 1 — Marquer (`marquer`)
+
+On parcourt les polynômes enregistrés dans `polyUtile` (ceux déclarés "en vie" via `enregistrer(p)`) et on met `utile = true` sur leurs maillons.
+
+```
+p1 et p2 enregistrés → leurs 6 maillons sont marqués utile = true
+les maillons temporaires restent à utile = false
+```
+
+#### Phase 2 — Balayer (`balayer`)
+
+On parcourt toute la liste `tousLesMaillons` :
+- `utile == true` → maillon utile : on le **garde**, on remet `utile = false` (reset pour le prochain cycle)
+- `utile == false` → maillon inutile : on le **jette** (il sort de `tousLesMaillons`)
+
+```
+[GC] Avant : 25 maillons en mémoire
+[GC] 19 maillon(s) libéré(s)
+[GC] Après : 6 maillons en mémoire   ← 3 pour p1 + 3 pour p2
+```
+
+---
+
+### 9. Versions récursives de `plus` et `moins` (`plusRecursif`, `moinsRecursif`)
 
 Même logique que la version itérative, mais sans boucle `while` : la fonction s'appelle elle-même sur le reste de la liste.
 
