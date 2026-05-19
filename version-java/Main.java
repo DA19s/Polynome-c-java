@@ -22,6 +22,9 @@ public class Main {
         Polynome.enregistrer(p1);
         Polynome.enregistrer(p2);
 
+        System.out.println("p1(2) = " + p1.evaluer(2));
+        System.out.println("p2(2) = " + p2.evaluer(2));
+
         // Ces opérations créent des maillons temporaires (résultats intermédiaires)
         System.out.println("\np1 + p2 = "); p1.plus(p2).afficher();
         System.out.println("p1 * p2 = "); p1.fois(p2).afficher();
@@ -35,5 +38,19 @@ public class Main {
         Polynome resultat = p1.moins(p2);
         Polynome.enregistrer(resultat);
         System.out.print("p1 - p2 = "); resultat.afficher();
+
+
+        Polynome[] reste = new Polynome[1];
+        Polynome q = p1.quotient(p2, reste);
+        Polynome.enregistrer(q);
+        Polynome.enregistrer(reste[0]);
+        System.out.print("p1 / p2 = "); q.afficher();
+        System.out.print("reste   = "); reste[0].afficher();
+
+        System.out.print("p1 + p2 (récursif) = "); p1.plusRecursif(p2).afficher();
+        System.out.print("p1 - p2 (récursif) = "); p1.moinsRecursif(p2).afficher();
+
+        System.out.println();
+        Polynome.recycler();
     }
 }
